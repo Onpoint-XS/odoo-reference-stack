@@ -3,7 +3,7 @@
     # This version is the thing the post-deploy assertion checks. Bump it in the same
     # commit as any change to this module, or CI fails the pull request and the deploy
     # assertion fails the release.
-    "version": "18.0.1.0.1",
+    "version": "18.0.1.0.2",
     "summary": "Deployment health endpoint, and a module small enough to demo upgrades",
     "author": "ONPOINT XS",
     "license": "MIT",
