@@ -4,7 +4,7 @@
     # commit as any change to this module, or CI fails the pull request and the deploy
     # assertion fails the release.
     "version": "18.0.1.0.1",
-    "summary": "A deployment health endpoint, and something small enough to demonstrate upgrades against",
+    "summary": "Deployment health endpoint, and a module small enough to demo upgrades",
     "author": "ONPOINT XS",
     "license": "MIT",
     "category": "Technical",

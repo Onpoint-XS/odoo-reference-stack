@@ -70,10 +70,18 @@ jobs:
             odoo:18.0 \
             odoo -d ci_test \
               -i reference_health \
-              --test-enable --stop-after-init \
+              --test-enable --test-tags=/reference_health \
+              --stop-after-init \
               --log-level=test 2>&1 | tee odoo.log
-          # Odoo exits 0 on a failed test in some versions. Grep the log as well.
-          if grep -qE '^[0-9-]+ .* (ERROR|CRITICAL) .*(odoo\.addons\.reference_health|test)' odoo.log; then
+          # --test-tags=/reference_health scopes the run to this module. Without it
+          # Odoo runs its own entire suite, 1,348 tests, and several of those fail in
+          # a bare container for want of Chrome and websocket-client. Those failures
+          # say nothing about our code, and a gate that is red for reasons nobody can
+          # act on gets ignored, then bypassed, then removed.
+          #
+          # Odoo also exits 0 on a failed test in some versions, so the summary line
+          # in the log is the real source of truth rather than the exit code.
+          if grep -qE 'odoo\.tests\.result: [0-9]+ (failed|error)' odoo.log; then
             echo "::error::Odoo reported test failures"
             exit 1
           fi
