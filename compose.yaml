@@ -12,7 +12,7 @@
 
 services:
   db:
-    image: postgres:16@sha256:REPLACE_WITH_DIGEST
+    image: postgres:16@sha256:e17e86066e5ef83e0952a9347f5c792b7ece00972e2aa787a6986f471b3dd3d5
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -29,7 +29,7 @@ services:
     restart: unless-stopped
 
   odoo:
-    image: odoo:18.0@sha256:REPLACE_WITH_DIGEST
+    image: odoo:18.0@sha256:259fa933bf3ee7f3e375bd74d1e0bc28bd75955159723be477359e0fdb8acf67
     depends_on:
       db:
         condition: service_healthy
@@ -52,7 +52,7 @@ services:
     restart: unless-stopped
 
   nginx:
-    image: nginx:1.27-alpine@sha256:REPLACE_WITH_DIGEST
+    image: nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
     depends_on:
       - odoo
     ports:
