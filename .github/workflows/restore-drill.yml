@@ -3,9 +3,11 @@ name: Restore drill
 # Weekly. An untested backup is a hypothesis, and the point of running this on a
 # schedule is to find out on a Tuesday afternoon rather than during an outage.
 
+# Manual trigger only here, for the same reason as deploy.yml. In a real deployment
+# this runs weekly:
+#   schedule:
+#     - cron: '0 3 * * 1'
 on:
-  schedule:
-    - cron: '0 3 * * 1'
   workflow_dispatch:
 
 jobs:

@@ -51,16 +51,32 @@ jobs:
 
       - name: Run the Odoo test suite
         # -i installs the module and runs its tests against a real PostgreSQL.
-        # --test-enable without --stop-after-init will hang forever in CI.
+        # --test-enable without --stop-after-init hangs forever in CI.
+        #
+        # HOST/USER/PASSWORD are env vars rather than flags on purpose. The official
+        # Odoo image entrypoint builds its own connection arguments from these and
+        # defaults HOST to "db", and what it builds wins over --db_host passed on the
+        # command line. Setting the flags alone produces "could not translate host
+        # name db", which reads like a networking problem and is not one.
+        env:
+          PGHOST: localhost
         run: |
           docker run --rm --network host \
+            -e HOST=localhost \
+            -e PORT=5432 \
+            -e USER=odoo \
+            -e PASSWORD=odoo \
             -v "${PWD}/addons:/mnt/extra-addons:ro" \
             odoo:18.0 \
             odoo -d ci_test \
-              --db_host=localhost --db_user=odoo --db_password=odoo \
               -i reference_health \
               --test-enable --stop-after-init \
-              --log-level=test
+              --log-level=test 2>&1 | tee odoo.log
+          # Odoo exits 0 on a failed test in some versions. Grep the log as well.
+          if grep -qE '^[0-9-]+ .* (ERROR|CRITICAL) .*(odoo\.addons\.reference_health|test)' odoo.log; then
+            echo "::error::Odoo reported test failures"
+            exit 1
+          fi
 
   manifest:
     runs-on: ubuntu-latest

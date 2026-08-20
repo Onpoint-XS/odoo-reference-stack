@@ -6,9 +6,11 @@ name: Deploy
 # error, and leave the module at its old version. Without step 4 that deploy is green
 # and the change is not live.
 
+# Manual trigger only in this reference repository, because it needs a self-hosted
+# runner on the production host and there isn't one here. In a real deployment this
+# is `on: push: branches: [main]`, which is the point: the runner is the only path
+# into production and every change carries a commit, an author and a log.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:
