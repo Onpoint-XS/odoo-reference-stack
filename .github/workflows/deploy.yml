@@ -1,0 +1,56 @@
+name: Deploy
+
+# Snapshot, deploy, assert, roll back on failure.
+#
+# The assertion step is the one that matters. Odoo will finish an upgrade, report no
+# error, and leave the module at its old version. Without step 4 that deploy is green
+# and the change is not live.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, production]
+    # Nobody holds SSH to this machine. The runner is the only path in, which means
+    # every change to production has a commit, an author and a log attached to it.
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Record the commit we can roll back to
+        id: prev
+        run: echo "sha=$(git rev-parse HEAD~1)" >> "$GITHUB_OUTPUT"
+
+      - name: Snapshot the database
+        id: snap
+        run: |
+          file="/var/backups/pre-deploy-$(date +%Y%m%d-%H%M%S).dump"
+          docker compose exec -T db pg_dump -U "${DB_USER}" -Fc "${DB_NAME}" > "${file}"
+          echo "file=${file}" >> "$GITHUB_OUTPUT"
+
+      - name: Pull digest-pinned images
+        run: docker compose pull
+
+      - name: Upgrade modules
+        run: |
+          docker compose run --rm odoo \
+            odoo -d "${DB_NAME}" -u reference_health --stop-after-init
+          docker compose up -d
+
+      - name: Assert the version actually moved
+        run: |
+          expected=$(python3 -c "import ast,pathlib; \
+            print(ast.literal_eval(pathlib.Path('addons/reference_health/__manifest__.py').read_text())['version'])")
+          ./scripts/assert_version.sh reference_health "${expected}"
+
+      - name: Roll back database and code together
+        if: failure()
+        run: ./scripts/rollback.sh "${{ steps.snap.outputs.file }}" "${{ steps.prev.outputs.sha }}"

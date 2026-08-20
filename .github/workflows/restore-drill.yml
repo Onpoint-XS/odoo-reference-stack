@@ -1,0 +1,17 @@
+name: Restore drill
+
+# Weekly. An untested backup is a hypothesis, and the point of running this on a
+# schedule is to find out on a Tuesday afternoon rather than during an outage.
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+jobs:
+  drill:
+    runs-on: [self-hosted, production]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore the latest snapshot into a throwaway database
+        run: ./scripts/restore_drill.sh

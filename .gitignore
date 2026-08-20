@@ -1,0 +1,5 @@
+.env
+config/nginx/certs/
+*.dump
+*.sql
+backups/

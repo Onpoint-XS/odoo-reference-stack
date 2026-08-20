@@ -1,0 +1,88 @@
+name: CI
+
+# Every pull request. No exceptions, no skip label, no "it's just a config change".
+# The value of a gate is entirely in it never being bypassed.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install linters
+        run: pip install ruff pylint-odoo
+
+      - name: ruff
+        run: ruff check addons/
+
+      - name: pylint-odoo
+        # Catches the Odoo-specific mistakes a generic Python linter cannot see:
+        # missing manifest keys, translations built by string concatenation,
+        # SQL built with string interpolation, deprecated API usage.
+        run: pylint --load-plugins=pylint_odoo -e odoolint addons/
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: odoo
+          POSTGRES_PASSWORD: odoo
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports: ['5432:5432']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run the Odoo test suite
+        # -i installs the module and runs its tests against a real PostgreSQL.
+        # --test-enable without --stop-after-init will hang forever in CI.
+        run: |
+          docker run --rm --network host \
+            -v "${PWD}/addons:/mnt/extra-addons:ro" \
+            odoo:18.0 \
+            odoo -d ci_test \
+              --db_host=localhost --db_user=odoo --db_password=odoo \
+              -i reference_health \
+              --test-enable --stop-after-init \
+              --log-level=test
+
+  manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fail if a changed module did not bump its version
+        # The single most common cause of a deploy that reports success and changes
+        # nothing. Catching it here is cheaper than catching it with the post-deploy
+        # assertion, and far cheaper than catching it in production a week later.
+        run: |
+          changed=$(git diff --name-only origin/${{ github.base_ref || 'main' }}...HEAD -- addons/ \
+                    | cut -d/ -f2 | sort -u)
+          status=0
+          for module in ${changed}; do
+            [ -f "addons/${module}/__manifest__.py" ] || continue
+            if ! git diff origin/${{ github.base_ref || 'main' }}...HEAD -- \
+                 "addons/${module}/__manifest__.py" | grep -q '^+.*version'; then
+              echo "::error::${module} changed but its manifest version did not move"
+              status=1
+            fi
+          done
+          exit ${status}

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="view_reference_deployment_list" model="ir.ui.view">
+    <field name="name">reference.deployment.list</field>
+    <field name="model">reference.deployment</field>
+    <field name="arch" type="xml">
+      <list string="Deployments">
+        <field name="deployed_at"/>
+        <field name="name"/>
+        <field name="module_version"/>
+        <field name="commit_sha"/>
+        <field name="rolled_back" widget="boolean_toggle"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="action_reference_deployment" model="ir.actions.act_window">
+    <field name="name">Deployments</field>
+    <field name="res_model">reference.deployment</field>
+    <field name="view_mode">list,form</field>
+  </record>
+
+  <menuitem id="menu_reference_deployment"
+            name="Deployments"
+            parent="base.menu_administration"
+            action="action_reference_deployment"
+            sequence="90"/>
+</odoo>
