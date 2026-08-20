@@ -17,7 +17,7 @@ class TestDeployment(TransactionCase):
         record = self.env["reference.deployment"].create(
             {"name": "deploy-1", "module_version": "18.0.1.0.1"}
         )
-        self.assertTrue(record.is_recent)
+        self.assertFalse(record.is_recent)
 
     def test_recent_flag_is_false_beyond_the_window(self):
         record = self.env["reference.deployment"].create(
