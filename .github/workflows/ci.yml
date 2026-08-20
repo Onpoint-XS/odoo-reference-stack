@@ -26,9 +26,24 @@ jobs:
 
       - name: pylint-odoo
         # Catches the Odoo-specific mistakes a generic Python linter cannot see:
-        # missing manifest keys, translations built by string concatenation,
-        # SQL built with string interpolation, deprecated API usage.
-        run: pylint --load-plugins=pylint_odoo -e odoolint addons/
+        # SQL built by string interpolation, translations built by concatenation,
+        # deprecated API usage, manifest problems.
+        #
+        # --disable=all before --enable=odoolint matters. On its own, -e ADDS to
+        # pylint's defaults rather than replacing them, so the run also demands module
+        # docstrings and fails on `import odoo`, which is not installed here and is not
+        # supposed to be.
+        #
+        # The three trailing disables are OCA repository conventions rather than Odoo
+        # ones: requiring OCA as manifest author, restricting the licence to their
+        # allowlist, and requiring a per-module README.rst. Correct inside OCA, wrong
+        # here.
+        run: |
+          pylint --load-plugins=pylint_odoo \
+            --disable=all \
+            --enable=odoolint \
+            --disable=manifest-required-author,license-allowed,missing-readme \
+            addons/
 
   test:
     runs-on: ubuntu-latest
@@ -81,8 +96,8 @@ jobs:
           #
           # Odoo also exits 0 on a failed test in some versions, so the summary line
           # in the log is the real source of truth rather than the exit code.
-          if grep -qE 'odoo\.tests\.result: [0-9]+ (failed|error)' odoo.log; then
-            echo "::error::Odoo reported test failures"
+          if ! grep -qE 'odoo\.tests\.result: 0 failed, 0 error' odoo.log; then
+            echo "::error::Odoo did not report a clean test run"
             exit 1
           fi
 

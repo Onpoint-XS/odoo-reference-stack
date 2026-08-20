@@ -13,6 +13,4 @@
         "security/ir.model.access.csv",
         "views/deployment_views.xml",
     ],
-    "installable": True,
-    "application": False,
 }
