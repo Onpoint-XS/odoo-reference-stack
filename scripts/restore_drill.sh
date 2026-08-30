@@ -12,6 +12,11 @@
 
 set -euo pipefail
 
+# Guarded because rollback.sh guards it and this script did not. Under set -u an
+# unset DB_USER fails at first use with a bare bash error; this fails immediately
+# and says which variable is missing.
+DB_USER="${DB_USER:?DB_USER must be set}"
+
 DRILL_DB="odoo_drill_$(date +%Y%m%d_%H%M%S)"
 WORKDIR="$(mktemp -d)"
 trap 'rm -rf "${WORKDIR}"' EXIT

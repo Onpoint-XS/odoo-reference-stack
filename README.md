@@ -1,5 +1,7 @@
 # odoo-reference-stack
 
+[![CI](https://github.com/Onpoint-XS/odoo-reference-stack/actions/workflows/ci.yml/badge.svg)](https://github.com/Onpoint-XS/odoo-reference-stack/actions/workflows/ci.yml)
+
 A self-hosted Odoo 18 deployment that can be changed safely.
 
 Getting Odoo running on a server is a morning's work. Keeping it changeable for two years is a
@@ -24,6 +26,7 @@ something that goes wrong in production:
 | Restore drill | `scripts/restore_drill.sh` | Restores into a throwaway database and times it |
 | Runbook | `docs/runbook.md` | What to do at 2am |
 | DR plan | `docs/disaster-recovery.md` | RPO, RTO, and what has actually been tested |
+| Security review | `docs/security-review-2026-08.md` | A review of this repository, its six findings, and the fixes |
 
 ## The part most deployments skip
 
