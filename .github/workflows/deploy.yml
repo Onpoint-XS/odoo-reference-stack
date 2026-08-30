@@ -22,7 +22,20 @@ jobs:
     runs-on: [self-hosted, production]
     # Nobody holds SSH to this machine. The runner is the only path in, which means
     # every change to production has a commit, an author and a log attached to it.
+    #
+    # DB_USER and DB_NAME were previously used in run steps without being declared
+    # anywhere. Compose reads .env for substitution inside compose.yaml, but that does
+    # not export anything into the shell running a workflow step, so on a fresh runner
+    # both expanded to empty and pg_dump ran against no database at all.
+    env:
+      DB_USER: ${{ secrets.DB_USER }}
+      DB_NAME: ${{ secrets.DB_NAME }}
     steps:
+      - name: Fail fast if the database environment is missing
+        run: |
+          : "${DB_USER:?DB_USER is not set. Add it to repository secrets.}"
+          : "${DB_NAME:?DB_NAME is not set. Add it to repository secrets.}"
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
@@ -36,6 +49,21 @@ jobs:
         run: |
           file="/var/backups/pre-deploy-$(date +%Y%m%d-%H%M%S).dump"
           docker compose exec -T db pg_dump -U "${DB_USER}" -Fc "${DB_NAME}" > "${file}"
+
+          # A redirect creates the file before pg_dump writes to it, so a dump that
+          # died halfway leaves something that exists and looks fine. Catch it here,
+          # rather than at rollback time when there is nothing to fall back to.
+          if [ ! -s "${file}" ]; then
+            echo "FAIL: ${file} is empty. Refusing to deploy without a usable snapshot." >&2
+            exit 1
+          fi
+
+          # Keep the last five. Without this every deploy leaves a full dump on the
+          # production host until the disk fills, which stops Postgres writing and
+          # takes Odoo down with it. Nothing here watches disk, so the first sign of
+          # the problem would be the outage.
+          ls -1t /var/backups/pre-deploy-*.dump 2>/dev/null | tail -n +6 | xargs -r rm --
+
           echo "file=${file}" >> "$GITHUB_OUTPUT"
 
       - name: Pull digest-pinned images

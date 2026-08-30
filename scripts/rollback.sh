@@ -14,6 +14,34 @@ set -euo pipefail
 SNAPSHOT="${1:?snapshot file required}"
 PREV_SHA="${2:?previous commit sha required}"
 DB_NAME="${DB_NAME:?DB_NAME must be set}"
+DB_USER="${DB_USER:?DB_USER must be set}"
+
+# Validate before destroying anything.
+#
+# This script used to drop the database first and find out whether the snapshot was
+# any good afterwards. If pg_restore then failed there was nothing to go back to, at
+# the exact moment something had already gone wrong. restore_drill.sh has always
+# restored into a throwaway database and checked it before dropping; this script did
+# not, and the repository already contained the pattern it should have used.
+#
+# pg_restore --list reads the archive table of contents without touching a database,
+# so it costs nothing and catches truncation, corruption and zero-byte files. The
+# deploy workflow creates the dump with a shell redirect, which means the file exists
+# before pg_dump writes to it, so a dump that died halfway leaves something that looks
+# perfectly normal on disk.
+echo "==> validating ${SNAPSHOT} before touching the database"
+
+if [[ ! -s "${SNAPSHOT}" ]]; then
+  echo "FAIL: ${SNAPSHOT} is missing or empty. Refusing to drop the database." >&2
+  exit 1
+fi
+
+if ! docker compose exec -T db pg_restore --list >/dev/null 2>&1 < "${SNAPSHOT}"; then
+  echo "FAIL: ${SNAPSHOT} is not a readable pg_dump archive. Refusing to drop the database." >&2
+  exit 1
+fi
+
+echo "==> snapshot is readable, proceeding"
 
 echo "==> stopping odoo so nothing writes during the restore"
 docker compose stop odoo
